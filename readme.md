@@ -12,9 +12,21 @@ A lightweight, reactive signals library for TypeScript. Build reactive state wit
 
 ## Getting Started
 
+### Signal
+
+A Signal is the basic unit of reactive state. It is an abstract reactive primitive that stores a value, tracks reads, and notifies subscribers on changes.
+
+Public signals methods:
+
+- `get()` reads the current value.
+- `toString()` returns a string representation of the current value.
+- `subscribe(fn)` registers a listener for value changes.
+- `unsubscribe(fn)` removes a listener and throws if it was not registered.
+- `tryUnsubscribe(fn)` removes a listener and returns false instead of throwing when it was not registered.
+
 ### Value
 
-A `Value` is the basic unit of reactive state. It holds a typed value and notifies subscribers when it changes.
+A Value is a concrete kind of Signal. It holds a typed value and notifies subscribers when it changes.
 
 ```ts
 import { Value } from "@pxstorm/signals";
@@ -30,18 +42,17 @@ count.set(1); // no notification — value unchanged
 count.set(2); // logs: count changed: 2
 ```
 
-- `get()` returns the current value.
+Extend signal with methods:
+
 - `set(value)` updates the value and notifies subscribers only when the value actually changed (by reference for objects).
-- `subscribe(fn)` registers a listener called with the new value on every change.
-- `unsubscribe(fn)` unregister a listener (fail if listener is not registered).
-- `tryUnsubscribe(fn)` unregister a listener (continue if listener is not registered).
-- `toString()` returns a string representation of the current value.
 
 ---
 
 ### Computed
 
 A `Computed` derives its value from other signals. It automatically tracks its dependencies and re-evaluates lazily on next tick when any dependency changes.
+
+The computation function is called once on construction and again whenever a tracked dependency changes. When multiple dependencies change in the same tick, `Computed` recomputes only once.
 
 ```ts
 import { Value, Computed } from "@pxstorm/signals";
@@ -63,13 +74,38 @@ console.log(total.get()); // 30
 setTimeout(() => console.log(total.get()); // 40
 ```
 
-- The computation function is called once on construction and again whenever a tracked dependency changes.
-- When multiple dependencies change in the same tick, `Computed` recomputes only once.
+Extend signal with methods:
+
 - `recompute()` forces an immediate synchronous re-evaluation.
 
 ---
 
-### Signal.track / Signal.watch
+### Input
+
+`Input` is a `Value` that accepts raw, untyped input and converts it to a typed value via a `Converter`. It is useful when receiving values from external sources such as URL parameters, form fields, or query strings.
+
+```ts
+import { Input, NumberConverter } from "@pxstorm/signals";
+
+const page = new Input(1, new NumberConverter());
+
+page.set("5");         // parses "5" → 5
+console.log(page.get()); // 5
+```
+
+When no converter is provided, `Input` automatically selects a default one based on the type of the initial value (`string`, `number`, `boolean`, or `object`).
+
+```ts
+const flag = new Input(false); // uses BooleanConverter by default
+flag.set("yes");
+console.log(flag.get()); // true
+```
+
+`toString()` uses the converter's `stringify` to produce the external representation.
+
+---
+
+### Signals Track and Watch
 
 `Signal` provides utilities for tracking which signals are read inside a function and reacting to their changes.
 
@@ -139,34 +175,7 @@ controller.abort(); // stop watching
 name.set("Dave"); // no longer triggers
 ```
 
----
-
 ## API
-
-### Input
-
-`Input` is a `Value` that accepts raw, untyped input and converts it to a typed value via a `Converter`. It is useful when receiving values from external sources such as URL parameters, form fields, or query strings.
-
-```ts
-import { Input, NumberConverter } from "@pxstorm/signals";
-
-const page = new Input(1, new NumberConverter());
-
-page.set("5");         // parses "5" → 5
-console.log(page.get()); // 5
-```
-
-When no converter is provided, `Input` automatically selects a default one based on the type of the initial value (`string`, `number`, `boolean`, or `object`).
-
-```ts
-const flag = new Input(false); // uses BooleanConverter by default
-flag.set("yes");
-console.log(flag.get()); // true
-```
-
-`toString()` uses the converter's `stringify` to produce the external representation.
-
----
 
 ### Converters
 
